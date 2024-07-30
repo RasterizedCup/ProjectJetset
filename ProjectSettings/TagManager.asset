@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!78 &1
+TagManager:
+  serializedVersion: 2
+  tags:
+  - ground
+  - rail
+  - railDetector
+  - rideableWall
+  - smoothRail
+  - test_layer
+  - RagdollForce
+  layers:
+  - Default
+  - TransparentFX
+  - Ignore Raycast
+  - 
+  - Water
+  - UI
+  - 
+  - 
+  - PostProcessing
+  - ground
+  - UiElements
+  - rail
+  - wallride
+  - smoothRail
+  - wallRideCamBound
+  - wallRideCurved
+  - test_layer
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  m_SortingLayers:
+  - name: Default
+    uniqueID: 0
+    locked: 0
+  - name: UiBlocks
+    uniqueID: 710559263
+    locked: 0
