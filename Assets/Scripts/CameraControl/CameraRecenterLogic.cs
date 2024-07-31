@@ -83,6 +83,10 @@ public class CameraRecenterLogic : MonoBehaviour
 
     float dampValXBase, dampValYBase, dampValZBase;
     float collideDampBase, collideDampOccludeBase;
+
+    bool setWrapDisable = false;
+    float wrapDisableDelay = .1f;
+    float currWrapTime = int.MaxValue;
     // Start is called before the first frame update
     void Start()
     {
@@ -125,9 +129,14 @@ void Update()
 
     void forceWallrideFocusPointShift()
     {
+        if (setWrapDisable)
+        {
+            setWrapDisable = false;
+            camControls.m_XAxis.m_Wrap = false;
+        }
         if (AttachToWall.isAttachedToWall)
         {
-            camControls.m_XAxis.m_Wrap = false;
+           // camControls.m_XAxis.m_Wrap = false;
 
             // float rotValIndex = PlayerObj.transform.rotation.eulerAngles.y; // use wall rotation maybe?
             float rotValIndex;
@@ -137,6 +146,7 @@ void Update()
                 rotValIndex = Quaternion.FromToRotation(Vector3.right * -1, AttachToWall.wallCurrNormal).eulerAngles.y;
             if (isInitialWallAttach)
             {
+                currWrapTime = int.MaxValue;
                 // reduce all damping values
                 camCollider.m_Damping = 0;
                 camCollider.m_DampingWhenOccluded = 0;
@@ -148,25 +158,41 @@ void Update()
                     camControls.GetRig(i).GetCinemachineComponent<CinemachineOrbitalTransposer>().m_ZDamping = 0;
                 }
 
-                camControls.m_XAxis.m_MinValue = rotValIndex - 90;
-                camControls.m_XAxis.m_MaxValue = rotValIndex + 90;
+                float minCamVal = rotValIndex - 90;
+                float maxCamVal = rotValIndex + 90;
+                //camControls.m_XAxis.m_MinValue = rotValIndex - 90;
+                // camControls.m_XAxis.m_MaxValue = rotValIndex + 90;
+                //camControls.m_XAxis.m_Wrap = false;
                 // clamp rot values, quaternion stuff
 
-                 if(camControls.m_XAxis.Value < camControls.m_XAxis.m_MinValue)
+                // handle clamping edgecases for wallride camera
+                if (camControls.m_XAxis.Value < minCamVal && AttachToWall.isRightWallHit)
                  {
-                     camControls.m_XAxis.m_MinValue -= 360;
-                     camControls.m_XAxis.m_MaxValue -= 360;
+                    minCamVal -= 360;
+                    maxCamVal -= 360;
+                    //camControls.m_XAxis.Value += 360;
                  }
-
-                if (camControls.m_XAxis.m_MinValue > 180 || camControls.m_XAxis.Value < 0)
+                 else if(camControls.m_XAxis.Value < minCamVal && AttachToWall.isLeftWallHit)
                 {
-                    specialCaseRecenter_quaternionMath = true;     
-                    
+                    minCamVal -= 360;
+                    maxCamVal -= 360;
+                }
+
+                camControls.m_XAxis.m_MinValue = minCamVal;
+                camControls.m_XAxis.m_MaxValue = maxCamVal;
+                setWrapDisable = true;
+                //camControls.m_XAxis.m_Wrap = false;
+
+                if (minCamVal > 180 || camControls.m_XAxis.Value < 0)
+                {
+                    specialCaseRecenter_quaternionMath = true;                        
                 }
                 else
                 {
                     specialCaseRecenter_quaternionMath = false;
                 }
+
+
                 // float currRotationYoffsetFromCenterClamp = PlayerObj.transform.rotation.eulerAngles.y - ;
                 // camControls.m_XAxis.Value = //clamp value point between new vals
                 // get pos/neg offset of cam axis value from player orientation, add that to center of clamp for wall mount
@@ -403,6 +429,7 @@ void Update()
         if (currTime > Time.time && (AttachToRail.isAttachedToRail || AttachToWall.isAttachedToWall || RailDetect.isOnSmoothRail))
         {
             //Debug.Log("Reset first mount");
+            camControls.m_XAxis.m_Wrap = true;
             SmoothRailGrinding.handleCamYOffset = true;
             camControls.m_RecenterToTargetHeading.m_enabled = true;
             camControls.m_RecenterToTargetHeading.m_WaitTime = 0;
@@ -421,6 +448,7 @@ void Update()
             //Debug.Log("forcing recenter");
             if (AttachToWall.isAttachedToWall)
             {
+                camControls.m_XAxis.m_Wrap = true;
                 camControls.m_RecenterToTargetHeading.m_WaitTime = 0;
                 camControls.m_RecenterToTargetHeading.m_RecenteringTime = wallRideInstantRecenterRate;
                 camControls.m_RecenterToTargetHeading.m_enabled = true;
@@ -446,6 +474,7 @@ void Update()
         else if (AttachToWall.isAttachedToWall && isUpdateMount)
         {
             Debug.Log("wall mount update");
+            camControls.m_XAxis.m_Wrap = true;
             camControls.m_RecenterToTargetHeading.m_WaitTime = 0;
             camControls.m_RecenterToTargetHeading.m_RecenteringTime = wallRideInstantRecenterRate;
             camControls.m_RecenterToTargetHeading.m_enabled = true;
@@ -491,6 +520,15 @@ void Update()
             camControls.m_RecenterToTargetHeading.m_enabled = false;          
             SmoothRailGrinding.handleCamYOffset = false;
         }
+        // case for allowing wrapping to handle edges on wallrun
+        if(getCamRotMagnitude() > InstantRecenterBreakThreshold && AttachToWall.isAttachedToWall)
+        {
+            camControls.m_XAxis.m_Wrap = false;
+        }
+       /* else if(getCamRotMagnitude() < InstantRecenterBreakThreshold && AttachToWall.isAttachedToWall)
+        {
+            camControls.m_XAxis.m_Wrap = true;
+        }*/
        /* if (AttachToWall.isAttachedToWall && !AttachToWall.isRoundWall) // override rule
         {
             camControls.m_RecenterToTargetHeading.m_WaitTime = 0;
@@ -506,5 +544,10 @@ void Update()
         {
             currTime = 0;
         }
+    }
+
+    float getCamRotMagnitude()
+    {
+        return Mathf.Abs(camControls.m_YAxis.m_InputAxisValue) + Mathf.Abs(camControls.m_XAxis.m_InputAxisValue);
     }
 }
