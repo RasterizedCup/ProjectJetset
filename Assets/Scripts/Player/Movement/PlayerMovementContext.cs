@@ -18,7 +18,8 @@ public class PlayerMovementContext
     public Vector3 secondPrevFramePos = Vector3.zero;
     public Vector3 secondPrevFrameOffset = Vector3.zero;
     public Vector3 lastFramePos = Vector3.zero;
-
+    public Queue<Vector3> positionHistory = new Queue<Vector3>();
+    public int maxPosHistoryTrack = 10;
     // movement states
     public bool isInitialMount;
     public bool isJumping = false;

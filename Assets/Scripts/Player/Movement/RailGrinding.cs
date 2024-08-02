@@ -13,13 +13,19 @@ public class RailGrinding : PlayerMovementEffector
     [SerializeField]
     private float maxRailVelocity = 20f;
     [SerializeField]
+    private float maxOverDriveRailVelocity = 50f;
+    [SerializeField]
     private float velocityRailIncreaseRate = 50;
+    [SerializeField]
+    private float overdriveVelocityIncreaseRate = 5;
 
     [SerializeField]
     private float gfxVerticalRotationRate = 100f;
 
     bool isPositiveAccel;
+    bool isAccelerating;
     private float zeroPoint = 270;
+    float currVelocity, prevVelocity;
 
 
     // function designed to circle euler angles back around to 0 if they pass 360
@@ -50,6 +56,7 @@ public class RailGrinding : PlayerMovementEffector
     {
         if (AttachToRail.isAttachedToRail)
         {
+            float currVelocityIncreaseRate = getCurrentSpeedBracket(moveContext.railVelocity);
             moveContext.playerVerticalVelocity.y = 0; // perpetually reset jump power whenever mounted on rail
             //currIdleTime = Time.time;
 
@@ -83,8 +90,8 @@ public class RailGrinding : PlayerMovementEffector
                     moveContext.railVelocity = (
                         offsetVals.Item1 >= cam.rotation.eulerAngles.y &&
                         cam.rotation.eulerAngles.y >= offsetVals.Item2 ?
-                        moveContext.railVelocity + (velocityRailIncreaseRate * Time.fixedDeltaTime) :
-                        moveContext.railVelocity - (velocityRailIncreaseRate * Time.fixedDeltaTime)); // calculate velocity rate increase
+                        moveContext.railVelocity + (currVelocityIncreaseRate * Time.fixedDeltaTime) :
+                        moveContext.railVelocity - (currVelocityIncreaseRate * Time.fixedDeltaTime)); // calculate velocity rate increase
                 }
                 else
                 { // xor bounds, meaning overlap past 0, bound is less than 100, greater than 200
@@ -100,13 +107,13 @@ public class RailGrinding : PlayerMovementEffector
                     moveContext.railVelocity = (
                         offsetVals.Item1 <= cam.rotation.eulerAngles.y ||
                         cam.rotation.eulerAngles.y <= offsetVals.Item2 ?
-                        moveContext.railVelocity + (velocityRailIncreaseRate * Time.fixedDeltaTime) :
-                        moveContext.railVelocity - (velocityRailIncreaseRate * Time.fixedDeltaTime)); // calculate velocity rate increase
+                        moveContext.railVelocity + (currVelocityIncreaseRate * Time.fixedDeltaTime) :
+                        moveContext.railVelocity - (currVelocityIncreaseRate * Time.fixedDeltaTime)); // calculate velocity rate increase
                 }
-                if (moveContext.railVelocity > maxRailVelocity)
+              /*  if (moveContext.railVelocity > maxRailVelocity)
                     moveContext.railVelocity = maxRailVelocity;
                 if (moveContext.railVelocity < maxRailVelocity * -1)
-                    moveContext.railVelocity = maxRailVelocity * -1;
+                    moveContext.railVelocity = maxRailVelocity * -1;*/
             }
             else if (Input.GetKey(KeyCode.S) || inputDirection < 0)
             {
@@ -128,8 +135,8 @@ public class RailGrinding : PlayerMovementEffector
                     moveContext.railVelocity = (
                         offsetVals.Item1 >= cam.rotation.eulerAngles.y &&
                         cam.rotation.eulerAngles.y >= offsetVals.Item2 ?
-                        moveContext.railVelocity - (velocityRailIncreaseRate * Time.fixedDeltaTime) :
-                        moveContext.railVelocity + (velocityRailIncreaseRate * Time.fixedDeltaTime)); // calculate velocity rate increase
+                        moveContext.railVelocity - (currVelocityIncreaseRate * Time.fixedDeltaTime) :
+                        moveContext.railVelocity + (currVelocityIncreaseRate * Time.fixedDeltaTime)); // calculate velocity rate increase
                 }
                 else
                 { // xor bounds, meaning overlap past 0, bound is less than 100, greater than 200
@@ -144,13 +151,13 @@ public class RailGrinding : PlayerMovementEffector
                     moveContext.railVelocity = (
                         offsetVals.Item1 <= cam.rotation.eulerAngles.y ||
                         cam.rotation.eulerAngles.y <= offsetVals.Item2 ?
-                        moveContext.railVelocity - (velocityRailIncreaseRate * Time.fixedDeltaTime) :
-                        moveContext.railVelocity + (velocityRailIncreaseRate * Time.fixedDeltaTime)); // calculate velocity rate increase
+                        moveContext.railVelocity - (currVelocityIncreaseRate * Time.fixedDeltaTime) :
+                        moveContext.railVelocity + (currVelocityIncreaseRate * Time.fixedDeltaTime)); // calculate velocity rate increase
                 }
-                if (moveContext.railVelocity > maxRailVelocity)
+               /* if (moveContext.railVelocity > maxRailVelocity)
                     moveContext.railVelocity = maxRailVelocity;
                 if (moveContext.railVelocity < maxRailVelocity * -1)
-                    moveContext.railVelocity = maxRailVelocity * -1;
+                    moveContext.railVelocity = maxRailVelocity * -1;*/
             }
             // only check for mount correction on first pass
             else
@@ -221,7 +228,20 @@ public class RailGrinding : PlayerMovementEffector
             }
             gfx.transform.localRotation = Quaternion.Euler(newGfxRotation.x, newGfxRotation.y, newGfxRotation.z);
             // end gradual rotation code
+            moveContext.railVelocity = Mathf.Clamp(moveContext.railVelocity, -maxOverDriveRailVelocity, maxOverDriveRailVelocity); ;
+            isAccelerating = Mathf.Abs(prevVelocity) < Mathf.Abs(moveContext.railVelocity);
+            prevVelocity = moveContext.railVelocity;
         }
+    }
+
+    float getCurrentSpeedBracket(float railVelocity)
+    {
+        // if we're accelerating and past our normal threshold
+        if (isAccelerating && Mathf.Abs(railVelocity) >= maxRailVelocity)
+        {
+            return overdriveVelocityIncreaseRate;
+        }
+        return velocityRailIncreaseRate;
     }
 
     private Vector3 SetAndGetRailNormal()

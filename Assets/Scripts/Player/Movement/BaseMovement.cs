@@ -38,7 +38,7 @@ public class BaseMovement : PlayerMovementEffector
     [SerializeField]
     private LayerMask groundLayers;
     [SerializeField]
-    private int jumpInputGraceFrames = 3;
+    private int jumpInputGraceFrames = 5;
 
     // private vars
     private float turnSmoothVelocity;

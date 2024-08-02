@@ -159,8 +159,10 @@ public class SmoothRailGrinding : PlayerMovementEffector
             bezierWalker.spline = RailDetect.currSplineRail;
             
             bezierWalker.spline.FindNearestPointTo(transform.position, out normalT); // check prev turn normal?
-            bezierWalker.spline.FindNearestPointTo(moveContext.secondPrevFramePos, out prevNormalT); // check prev turn normal?
-            
+            //bezierWalker.spline.FindNearestPointTo(moveContext.prevFramePos, out prevNormalT); // check prev turn normal?
+            bezierWalker.spline.FindNearestPointTo(moveContext.positionHistory.Peek(), out prevNormalT); // check prev turn normal?
+            Vector3 mountingNormal = bezierWalker.spline.GetNormal(normalT);
+
             bezierWalker.NormalizedT = normalT;
             if (prevNormalT > normalT)
                 currVelocity *= -1;

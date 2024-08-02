@@ -61,7 +61,6 @@ public class PlayerSlide : PlayerMovementEffector
         }
         if ((moveContext.isSliding && Time.time > currTime) || moveContext.isJumping)
         {
-            Debug.Log("slide over");
             moveContext.isSliding = false;
         }
     }

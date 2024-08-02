@@ -87,6 +87,8 @@ public class PlayerMovementManager : MonoBehaviour
     PlayerMovementContext moveContext;
 
     bool debugMagnitude;
+
+    float currHistoryFrame = 0; // one time iterator to (playerContext framePos history size)
     // Start is called before the first frame update
     void Start()
     {
@@ -112,6 +114,7 @@ public class PlayerMovementManager : MonoBehaviour
         // handle single-time inputs in update
         baseMovement.CheckIfToggleSprint(ref moveContext);
         baseMovement.CheckIfJump();
+        doubleJump.checkIfDoubleJump(ref moveContext);
         playerSlide.checkIfSlide();
         wallRiding.CheckIfJump(); // distinct from base movement cause its handled so differently
         smoothRailGrinding.CheckIfJump();
@@ -314,6 +317,16 @@ public class PlayerMovementManager : MonoBehaviour
             if ((moveContext.secondPrevFramePos.x == moveContext.lastFramePos.x && moveContext.secondPrevFramePos.z == moveContext.lastFramePos.z) 
                 && moveContext.railVelocity > 0) // only set if we're moving
                 moveContext.secondPrevFramePos = prevPrevOffset;
+        }
+
+        moveContext.positionHistory.Enqueue(moveContext.lastFramePos);
+        if(currHistoryFrame >= moveContext.maxPosHistoryTrack)
+        {
+            moveContext.positionHistory.Dequeue();
+        }
+        else
+        {
+            currHistoryFrame++;
         }
 
         if (AttachToRail.isAttachedToRail && !AttachToRail.movementCorrected)

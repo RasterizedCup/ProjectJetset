@@ -9,7 +9,7 @@ public class DoubleJump : PlayerMovementEffector
     [SerializeField]
     float doubleJumpFromSingleJumpLockoutTimer = .1f;
 
-    private int jumpInputGraceFrames = 3;
+    private int jumpInputGraceFrames = 10;
     private int currJumpGraceFrame = 0;
     bool doubleJumpInputted;
 
@@ -24,7 +24,7 @@ public class DoubleJump : PlayerMovementEffector
     }
 
     // Update is called once per frame
-    void Update()
+    public void checkIfDoubleJump(ref PlayerMovementContext moveContext)
     {
         if (Input.GetButtonDown("Jump"))
         {
@@ -52,7 +52,8 @@ public class DoubleJump : PlayerMovementEffector
 
     public void HandleDoubleJump(ref PlayerMovementContext moveContext)
     {
-        jumpLockoutReferenceCheck(ref moveContext);
+        if(doubleJumpExpended)
+            jumpLockoutReferenceCheck(ref moveContext);
         if (doubleJumpInputted && !moveContext.isGrounded && allowDoubleJump && (moveContext.isFalling || moveContext.isJumping) &&
             !RailDetect.isOnSmoothRail && !AttachToRail.isAttachedToRail && !AttachToWall.isAttachedToWall)
         {
