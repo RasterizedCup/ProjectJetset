@@ -110,10 +110,6 @@ public class RailGrinding : PlayerMovementEffector
                         moveContext.railVelocity + (currVelocityIncreaseRate * Time.fixedDeltaTime) :
                         moveContext.railVelocity - (currVelocityIncreaseRate * Time.fixedDeltaTime)); // calculate velocity rate increase
                 }
-              /*  if (moveContext.railVelocity > maxRailVelocity)
-                    moveContext.railVelocity = maxRailVelocity;
-                if (moveContext.railVelocity < maxRailVelocity * -1)
-                    moveContext.railVelocity = maxRailVelocity * -1;*/
             }
             else if (Input.GetKey(KeyCode.S) || inputDirection < 0)
             {

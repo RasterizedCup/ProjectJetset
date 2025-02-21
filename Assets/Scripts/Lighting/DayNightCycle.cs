@@ -12,6 +12,10 @@ public class DayNightCycle : MonoBehaviour
     [SerializeField]
     private Color SunsetColor;
     [SerializeField]
+    private Color MiddayColor;
+    [SerializeField]
+    private Color NightTimeColor;
+    [SerializeField]
     private float sunriseStartAngle;
     [SerializeField]
     private float sunsetStartAngle;
@@ -79,5 +83,6 @@ public class DayNightCycle : MonoBehaviour
         }*/
         currSatVal = Mathf.Clamp(currSatVal, 0, initialSatVal);
         refLight.color = Color.HSVToRGB(hVal, currSatVal, vVal);
+        //update to linearly interpolate to desired colors 
     }
 }

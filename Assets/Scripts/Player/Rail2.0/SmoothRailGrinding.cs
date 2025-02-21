@@ -149,6 +149,7 @@ public class SmoothRailGrinding : PlayerMovementEffector
         if (RailDetect.isInitialMount)
         {
             currRecenterDelay = 0;
+            // splineTech handled on frame update rather than physics, so we switch update styles
             cam.GetComponent<CinemachineBrain>().m_UpdateMethod = CinemachineBrain.UpdateMethod.SmartUpdate;
             cam.GetComponent<CinemachineBrain>().m_BlendUpdateMethod = CinemachineBrain.BrainUpdateMethod.LateUpdate;
             // set normalizedT to be equal to our location on spline
@@ -273,8 +274,6 @@ public class SmoothRailGrinding : PlayerMovementEffector
         // set appropriate velocity change rates when dismounting
         // check normals per update to see our expected forward orientation to make camera based forward movement
     }
-
-
 
     (float, float, bool) FindZeroPointOffsetBoundariesv2(float railAngle)
     {

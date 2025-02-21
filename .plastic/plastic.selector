@@ -1,0 +1,4 @@
+repository "Filly Jetset Proj urp - celShade - ver2@coffeeShaw1@cloud"
+  path "/"
+    br "/main"
+    co "/main"

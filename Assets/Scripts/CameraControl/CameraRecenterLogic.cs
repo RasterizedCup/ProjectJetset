@@ -62,6 +62,8 @@ public class CameraRecenterLogic : MonoBehaviour
     float wallCamBiasOffsetMultiplierY;
     [SerializeField]
     float wallDismountFocusPointRecenterRate;
+    [SerializeField]
+    float WallridePointOfFocusYAxisOffset;
 
     float currBias;
     float currTime;
@@ -78,15 +80,19 @@ public class CameraRecenterLogic : MonoBehaviour
     bool overrideDisableRecenter;
     bool isInitWallDismountRecenter = false;
     bool isInitialWallAttach = true;
-   
+    bool isInitialWallAttachWithInput = false;
+    bool newWallAttachNoInput = true; // set true whenever we mount a wall, if there is ANY input from look controls, we disable and run normal wrap restraints
+
     public static bool specialCaseRecenter_quaternionMath = false;
 
     float dampValXBase, dampValYBase, dampValZBase;
     float collideDampBase, collideDampOccludeBase;
 
+
     bool setWrapDisable = false;
     float wrapDisableDelay = .1f;
     float currWrapTime = int.MaxValue;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -144,8 +150,46 @@ void Update()
                 rotValIndex = Quaternion.FromToRotation(Vector3.right, AttachToWall.wallCurrNormal).eulerAngles.y;
             else
                 rotValIndex = Quaternion.FromToRotation(Vector3.right * -1, AttachToWall.wallCurrNormal).eulerAngles.y;
-            if (isInitialWallAttach)
+
+            if(isInitialWallAttach && getCamRotMagnitude() == 0)
             {
+                camControls.m_XAxis.m_Wrap = true;
+                newWallAttachNoInput = true;
+                isInitialWallAttach = false;
+
+                camCollider.m_Damping = 0;
+                camCollider.m_DampingWhenOccluded = 0;
+
+                for (var i = 0; i <= 2; i++)
+                {
+                    camControls.GetRig(i).GetCinemachineComponent<CinemachineOrbitalTransposer>().m_XDamping = 0;
+                    camControls.GetRig(i).GetCinemachineComponent<CinemachineOrbitalTransposer>().m_YDamping = 0;
+                    camControls.GetRig(i).GetCinemachineComponent<CinemachineOrbitalTransposer>().m_ZDamping = 0;
+                }
+
+                // get proportional value of x axis between min and max value relative to min and max point of focus clamp
+                float camAngleNormalizedX = (camControls.m_XAxis.Value - camControls.m_XAxis.m_MinValue) /
+                    (camControls.m_XAxis.m_MaxValue - camControls.m_XAxis.m_MinValue);
+                camAngleNormalizedX = Mathf.Clamp(camAngleNormalizedX, 0, 1);
+
+                // index clamp value from negative clamp
+                float netFocusPointOffset = (pointOfFocusOffsetClamp * 2) * camAngleNormalizedX;
+                currWallCamBiasX = ((pointOfFocusOffsetClamp * -1) + netFocusPointOffset) * wallRideInstantPOFdamper;
+
+                // Debug.Log(camControls.m_XAxis.m_MinValue + " " + camControls.m_XAxis.m_MaxValue + " " + camControls.m_XAxis.Value);
+                // Debug.Log($"normalized cam angle: {camAngleNormalizedX}");
+                // Debug.Log($"PoF position: {CamObj.transform.localPosition}");
+
+                // initialize Y cam offset values as well here
+                float camAngleNormalizedY = camControls.m_YAxis.Value;
+                float absoluteFocusPointOffsetY = (pointOfFocusOffsetClamp * 2) * camAngleNormalizedY;
+                currWallCamBiasY = ((pointOfFocusOffsetClamp * -1) + absoluteFocusPointOffsetY) * wallRideInstantPOFdamper;
+            }
+
+            if (newWallAttachNoInput && getCamRotMagnitude() > 0)
+            {
+                // set wrap to free, let recenter handle itself UNTIL user look input, then lock wrap constraints (normal code below)
+                newWallAttachNoInput = false;
                 currWrapTime = int.MaxValue;
                 // reduce all damping values
                 camCollider.m_Damping = 0;
@@ -217,7 +261,10 @@ void Update()
                 currWallCamBiasY = ((pointOfFocusOffsetClamp * -1) + absoluteFocusPointOffsetY) * wallRideInstantPOFdamper;
             }
 
-            GetComponent<CinemachineCollider>().m_CollideAgainst = LayerMask.GetMask("ground", "wallride", "wallRideCurved");
+            if(AttachToWall.isRoundWall)
+                GetComponent<CinemachineCollider>().m_CollideAgainst = LayerMask.GetMask("ground", "wallride", "wallRideCurved", "wallRideCamBound");
+            else
+                GetComponent<CinemachineCollider>().m_CollideAgainst = LayerMask.GetMask("ground", "wallRideCamBound");
 
             camControls.m_RecenterToTargetHeading.m_enabled = false;
 
@@ -251,9 +298,13 @@ void Update()
             // currWallCamBiasY = Mathf.Clamp(currWallCamBiasY, pointOfFocusOffsetClamp * -1, pointOfFocusOffsetClamp);
             
             //CamObj.transform.localPosition = new Vector3(currWallCamBiasX, baseYPosition + currWallCamBiasY, CamObj.transform.localPosition.z);
-            Vector3 goalPosition = new Vector3(currWallCamBiasX, baseYPosition + currWallCamBiasY, CamObj.transform.localPosition.z);
+            Vector3 goalPosition = new Vector3(currWallCamBiasX, baseYPosition + currWallCamBiasY + WallridePointOfFocusYAxisOffset, CamObj.transform.localPosition.z);
 
-            CamObj.transform.localPosition = Vector3.MoveTowards(CamObj.transform.localPosition, goalPosition, wallRideInstantPOFtransferRate);
+            if(!newWallAttachNoInput)
+                CamObj.transform.localPosition = Vector3.MoveTowards(CamObj.transform.localPosition, goalPosition, wallRideInstantPOFtransferRate);
+            else
+                CamObj.transform.localPosition = Vector3.MoveTowards(CamObj.transform.localPosition, new Vector3(0, WallridePointOfFocusYAxisOffset, 0), wallRideInstantPOFtransferRate);
+
             if (AttachToWall.isLeftWallHit)
             {
                 if(CamObj.transform.localPosition.x < 0)
@@ -271,6 +322,7 @@ void Update()
         }
         else
         {
+            newWallAttachNoInput = true;
             isInitialWallAttach = true;
             camControls.m_XAxis.m_Wrap = true;
             camControls.m_XAxis.m_MinValue = -180;
@@ -331,7 +383,7 @@ void Update()
                 float additiveXOffset = GetComponent<CinemachineFreeLook>().m_XAxis.m_InputAxisValue * initialCamSpeedX * wallCamBiasOffsetMultiplier;
                 currWallCamBias += additiveXOffset;
                 currWallCamBias = Mathf.Clamp(currWallCamBias, pointOfFocusOffsetClamp * -1, pointOfFocusOffsetClamp);
-                CamObj.transform.localPosition = new Vector3(currWallCamBias, CamObj.transform.localPosition.y, CamObj.transform.localPosition.z);
+                CamObj.transform.localPosition = new Vector3(currWallCamBias, CamObj.transform.localPosition.y + WallridePointOfFocusYAxisOffset, CamObj.transform.localPosition.z);
 
                 if (currWallCamBias < 0)
                 {
@@ -356,7 +408,7 @@ void Update()
                 float additiveXOffset = GetComponent<CinemachineFreeLook>().m_XAxis.m_InputAxisValue * initialCamSpeedX * wallCamBiasOffsetMultiplier;
                 currWallCamBias += additiveXOffset;
                 currWallCamBias = Mathf.Clamp(currWallCamBias, pointOfFocusOffsetClamp * -1, pointOfFocusOffsetClamp);
-                CamObj.transform.localPosition = new Vector3(currWallCamBias, CamObj.transform.localPosition.y, CamObj.transform.localPosition.z);
+                CamObj.transform.localPosition = new Vector3(currWallCamBias, CamObj.transform.localPosition.y + WallridePointOfFocusYAxisOffset, CamObj.transform.localPosition.z);
 
                 if (currWallCamBias > 0)
                 {
@@ -420,7 +472,9 @@ void Update()
             return;
         }*/
 
-        SetCamInstantResetFromRotMagnitude();
+        // MAY NEED TO TOGGLE RECENTER TO ADJUST FOR NEW CENTER VALS BETWEEN initMount and UpdateMount
+
+        SetCamInstantResetFromRotMagnitude(); 
         if (isFirstMount && (AttachToRail.isAttachedToRail || AttachToWall.isAttachedToWall || RailDetect.isOnSmoothRail))
         {
             currTime = Time.time + initialMountThreshold;
@@ -471,7 +525,7 @@ void Update()
                 camControls.m_YAxisRecentering.m_enabled = false;
             }
         } // only disable if we move camera       
-        else if (AttachToWall.isAttachedToWall && isUpdateMount)
+    /*    else if (AttachToWall.isAttachedToWall && isUpdateMount)
         {
             Debug.Log("wall mount update");
             camControls.m_XAxis.m_Wrap = true;
@@ -481,7 +535,7 @@ void Update()
             isUpdateMount = false;
             if(!AttachToWall.isRoundWall)
                 camControls.m_YAxisRecentering.m_enabled = true;
-        }
+        }*/
         else if ((AttachToRail.isAttachedToRail || RailDetect.isOnSmoothRail) && isUpdateMount)
         {
             //Debug.Log("rail mount update");
@@ -494,7 +548,7 @@ void Update()
         }
 
         // reset init mount if no attach
-        if(!AttachToWall.isAttachedToWall && !AttachToRail.isAttachedToRail && !RailDetect.isOnSmoothRail)
+        if (!AttachToWall.isAttachedToWall && !AttachToRail.isAttachedToRail && !RailDetect.isOnSmoothRail)
         {
             //Debug.Log("full reset and disable");
             isFirstMount = true;
@@ -503,7 +557,7 @@ void Update()
             SmoothRailGrinding.handleCamYOffset = Input.GetButton("CamRecenter");
             camControls.m_YAxisRecentering.m_enabled = false;
         }
-        if((AttachToWall.isAttachedToWall || AttachToRail.isAttachedToRail || RailDetect.isOnSmoothRail) && !Input.GetButton("CamRecenter") && currTime < Time.time)
+        if((/*AttachToWall.isAttachedToWall ||*/ AttachToRail.isAttachedToRail || RailDetect.isOnSmoothRail) && !Input.GetButton("CamRecenter") && currTime < Time.time)
         {
             camControls.m_RecenterToTargetHeading.m_WaitTime = (AttachToRail.isAttachedToRail || RailDetect.isOnSmoothRail) ? baseRailWaitTime : baseWallWaitTime;
             camControls.m_RecenterToTargetHeading.m_RecenteringTime = (AttachToRail.isAttachedToRail || RailDetect.isOnSmoothRail) ? railRecenterRate : wallRideRecenterRate;
@@ -517,25 +571,31 @@ void Update()
             !Input.GetButton("CamRecenter") &&
             (!AttachToWall.isAttachedToWall && !AttachToWall.isRoundWall)) // always recenter on walls
         {
-            camControls.m_RecenterToTargetHeading.m_enabled = false;          
+            camControls.m_RecenterToTargetHeading.m_enabled = false;
+            camControls.m_YAxisRecentering.m_enabled = false;
             SmoothRailGrinding.handleCamYOffset = false;
         }
         // case for allowing wrapping to handle edges on wallrun
         if(getCamRotMagnitude() > InstantRecenterBreakThreshold && AttachToWall.isAttachedToWall)
         {
             camControls.m_XAxis.m_Wrap = false;
-        }
-       /* else if(getCamRotMagnitude() < InstantRecenterBreakThreshold && AttachToWall.isAttachedToWall)
-        {
-            camControls.m_XAxis.m_Wrap = true;
-        }*/
-       /* if (AttachToWall.isAttachedToWall && !AttachToWall.isRoundWall) // override rule
-        {
-            camControls.m_RecenterToTargetHeading.m_WaitTime = 0;
-            // these two lines below are disabled while kinks of wallride camera are worked out
             camControls.m_YAxisRecentering.m_enabled = false;
-            camControls.m_RecenterToTargetHeading.m_enabled = false;
-        }*/
+        }
+        else if(AttachToWall.isAttachedToWall)
+        {
+           // camControls.m_YAxisRecentering.m_enabled = true;
+        }
+        /* else if(getCamRotMagnitude() < InstantRecenterBreakThreshold && AttachToWall.isAttachedToWall)
+         {
+             camControls.m_XAxis.m_Wrap = true;
+         }*/
+        /* if (AttachToWall.isAttachedToWall && !AttachToWall.isRoundWall) // override rule
+         {
+             camControls.m_RecenterToTargetHeading.m_WaitTime = 0;
+             // these two lines below are disabled while kinks of wallride camera are worked out
+             camControls.m_YAxisRecentering.m_enabled = false;
+             camControls.m_RecenterToTargetHeading.m_enabled = false;
+         }*/
     }
 
     void SetCamInstantResetFromRotMagnitude()

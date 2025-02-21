@@ -87,6 +87,11 @@ public class BaseMovement : PlayerMovementEffector
 
     public void handleQuadrantAcceleration(ref PlayerMovementContext moveContext)
     {
+        if (Input.GetKeyDown(KeyCode.Period))
+        {
+            Debug.Log("Debug!");
+        }
+
         // decay bonus velocity (caused by rail exit) down to max transition speed
         if (currentAcceptedMaxVelocity > currentAcceptedTransitionVelocity)
         {
@@ -103,7 +108,9 @@ public class BaseMovement : PlayerMovementEffector
                 currentAcceptedMaxVelocity = currentAcceptedTransitionVelocity;
             }
         }
-        adjustedAcceptedMaxVelocity = currentAcceptedMaxVelocity + (isSprinting ? sprintBonusVelocity : 0);
+
+      //  adjustedAcceptedMaxVelocity = currentAcceptedMaxVelocity + (isSprinting ? sprintBonusVelocity : 0);
+
         float rawAcceptedMaxVelocity = currentAcceptedMaxVelocity + (isSprinting ? sprintBonusVelocity : 0);
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
@@ -112,14 +119,22 @@ public class BaseMovement : PlayerMovementEffector
         Vector3 directionalMag = direction;
         directionalMag.x *= Mathf.Abs(horizontal);
         directionalMag.z *= Mathf.Abs(vertical);
-        // for controller, allow a max threshold to exist for controller movement
+
+        Vector2 flatDirectionalMag;
+        flatDirectionalMag.x = Mathf.Abs(horizontal) * direction.x;
+        flatDirectionalMag.y = Mathf.Abs(vertical) * direction.z;
+        //allow a max threshold to exist for controller movement
         float goalMaxVelocity;
         // need to find way to gradually accelerate while jumping as well, but ALSO not reset velocity when
-        // no input and on rail
-        if (directionalMag.magnitude < controllerVelocityDeadzoneThreshold && moveContext.isGrounded)
+        // no input and on rail, base on acceleration rather than velocity cap
+        if (directionalMag.magnitude < controllerVelocityDeadzoneThreshold)
         {
             // gradually transition to the adjusted velocity
-            goalMaxVelocity = rawAcceptedMaxVelocity * directionalMag.magnitude;
+            goalMaxVelocity = rawAcceptedMaxVelocity * flatDirectionalMag.magnitude;
+          //  if(goalMaxVelocity &&)
+
+            // remove flatdirectionalMag from below, THEN, find a way to fix gradual decent of speed when no input
+          //  adjustedAcceptedMaxVelocity = rawAcceptedMaxVelocity;
         }
         else
         {
@@ -127,15 +142,23 @@ public class BaseMovement : PlayerMovementEffector
         }
         if (adjustedAcceptedMaxVelocity != goalMaxVelocity)
         {
+           // Debug.Log(goalMaxVelocity + " " + adjustedAcceptedMaxVelocity);
             if (goalMaxVelocity > adjustedAcceptedMaxVelocity)
             {
+                Debug.Log("Increasing");
                 adjustedAcceptedMaxVelocity += (moveContext.currAccelChangeRate * Time.fixedDeltaTime);
+                if(goalMaxVelocity < adjustedAcceptedMaxVelocity)
+                    adjustedAcceptedMaxVelocity = goalMaxVelocity;
                 //Debug.Log($"raised velocity to: {adjustedAcceptedMaxVelocity}");
             }
             else if (goalMaxVelocity < adjustedAcceptedMaxVelocity)
             {
+                Debug.Log("Decreasing");
                 adjustedAcceptedMaxVelocity -= (moveContext.currAccelChangeRate * Time.fixedDeltaTime);
-                if(adjustedAcceptedMaxVelocity < 0)
+                if (goalMaxVelocity > adjustedAcceptedMaxVelocity)
+                    adjustedAcceptedMaxVelocity = goalMaxVelocity;
+
+                if (adjustedAcceptedMaxVelocity < 0)
                     adjustedAcceptedMaxVelocity = 0;
             }
 
@@ -147,6 +170,7 @@ public class BaseMovement : PlayerMovementEffector
             moveContext.currAccelMatrix.x + (direction.x * moveContext.currAccelChangeRate * Time.fixedDeltaTime),
             moveContext.currAccelMatrix.y,
             moveContext.currAccelMatrix.z + (direction.z * moveContext.currAccelChangeRate * Time.fixedDeltaTime));
+
 
         // soft directional ratio offsetting
         if (direction.z == 0f && direction.x == 0f) // need to track when reducing what
@@ -361,7 +385,7 @@ public class BaseMovement : PlayerMovementEffector
         if (AttachToWall.isInTransition)
         {
             moveContext.currAccelChangeRate = airVelocityChangeRate;
-            currentAcceptedMaxVelocity = currentAcceptedMaxVelocity = Mathf.Max(Mathf.Abs(moveContext.currAccelMatrix.magnitude), maxTransitionVelocity); // reduce over time if > maxVel
+            currentAcceptedMaxVelocity = Mathf.Max(Mathf.Abs(moveContext.currAccelMatrix.magnitude), maxTransitionVelocity); // reduce over time if > maxVel
         }
 
         moveContext.isGrounded = isGrounded();
@@ -529,7 +553,7 @@ public class BaseMovement : PlayerMovementEffector
     public void CheckIfToggleSprint(ref PlayerMovementContext moveContext)
     {
         // base toggle (do not allow sprint toggle if jumping)
-        if (Input.GetKeyDown(KeyCode.Joystick1Button8) || Input.GetKeyDown(KeyCode.LeftShift) && moveContext.isGrounded)
+        if ((Input.GetKeyDown(KeyCode.Joystick1Button8) || Input.GetKeyDown(KeyCode.LeftShift)) && moveContext.isGrounded)
         {
             isSprinting = !isSprinting;
         }

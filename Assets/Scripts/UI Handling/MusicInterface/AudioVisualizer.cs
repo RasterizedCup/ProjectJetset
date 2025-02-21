@@ -15,6 +15,12 @@ public class AudioVisualizer : MonoBehaviour
     private Transform VisualizerTransform1;
     [SerializeField]
     private Transform VisualizerTransform2;
+    [SerializeField]
+    private bool IncreaseVisualizerSizeWithProgression;
+    [SerializeField]
+    private float PercentBeginSizeIncreaseCutoff = .15f;
+    [SerializeField]
+    private float IncreaseMultiplier = 1;
 
     private const int SAMPLE_SIZE = 1024;
     public float rmsValue;
@@ -144,7 +150,14 @@ public class AudioVisualizer : MonoBehaviour
                 spectrumIndex++;
                 j++;
             }
-            float scaleY = sum / averageSize * visualModifier;
+
+            float adjustedVisualModifier = visualModifier;
+            if (IncreaseVisualizerSizeWithProgression && ((float)visualIndex / (float)amtOfVisual > PercentBeginSizeIncreaseCutoff))
+            {
+                adjustedVisualModifier *= IncreaseMultiplier;
+            }
+
+            float scaleY = sum / averageSize * adjustedVisualModifier;
             visualScale[visualIndex] -= Time.deltaTime * smoothSpeed;
             if (visualScale[visualIndex] < scaleY)
             {

@@ -170,6 +170,7 @@ public class AttachToRail : MonoBehaviour
                         isAttachedToRail = false;
                         lastAttachedRailBeforeDismount = cachedRailHit.transform.gameObject;
                         isInStraightRailTransition = true;
+                        Debug.Log("dismounted rail");
                        if (currTime < Time.time && !graceTimeBypass) // only iterate once for detached element
                             currTime = Time.time + newAttachGracePeriod; // allow dismount, if no rail attached at all, block mounting for brief time
                         isInitialDismount = true;

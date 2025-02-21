@@ -208,14 +208,7 @@ public class PlayerDash : PlayerMovementEffector
         }
         if (isDashing && currTime > Time.time)
         {
-            //handleDashAfterimage();
-            //StartCoroutine(handleAfterImage(timeRemainingInDash));
-        /*    moveContext.currAccelMatrix = new Vector3(
-                DashDirection.x * baseDashPower,
-                DashDirection.y * baseDashPower, 
-                DashDirection.z * baseDashPower);
-        */
-        return new Vector3(
+            return new Vector3(
                 DashDirection.x * baseDashPower,
                 DashDirection.y * baseDashPower,
                 DashDirection.z * baseDashPower);

@@ -43,9 +43,15 @@ public class WallRiding : PlayerMovementEffector // change this class in inherit
 
     public void handleWallRunMovement(ref PlayerMovementContext moveContext)
     {
+
         // translate matrix momentum upon initial attach
         if (AttachToWall.isInitAttach)
         {
+            if(moveContext.currAccelMatrix.magnitude < minSpeedUntilWallDismount)
+            {
+                AttachToWall.isInitAttach = false;
+                return;
+            }
             currTime = Time.time + camOffsetStartTimeThreshold;
             PlayerMovementContext.isWallRunning = true;
             currMagnitude = moveContext.currAccelMatrix.magnitude;
@@ -60,11 +66,18 @@ public class WallRiding : PlayerMovementEffector // change this class in inherit
                 gfx.transform.localPosition = new Vector3(gfx.transform.localPosition.x + gfxWallRideOffset, gfx.transform.localPosition.y, gfx.transform.localPosition.z);
         }
         handlemagnitudeChanges();
-        //moveContext.currAccelMatrix = new Vector3 (moveContext.currAccelMatrix.x, 0, moveContext.currAccelMatrix.z);
         Vector3 wallNormal = AttachToWall.wallCurrNormal;
         Vector3 wallForward = Vector3.Cross(wallNormal, transform.up);
 
         prevX = controller.transform.rotation.eulerAngles.y;
+
+        if((AttachToWall.isRightWallHit || AttachToWall.isLeftWallHit) && 
+            (moveContext.currAccelMatrix.magnitude < minSpeedUntilWallDismount))
+        {
+            AttachToWall.isNewDetach = true;
+            Vector3 wallLaunchOff = Vector3.zero;
+            AttachToWall.isInTransition = true;
+        }
 
         if (AttachToWall.isRightWallHit)
         {          
@@ -90,6 +103,7 @@ public class WallRiding : PlayerMovementEffector // change this class in inherit
     {
         if (!JumpInputted)
             return;
+
         Debug.Log("Launch Attempt");
         AttachToWall.isNewDetach = true;
         Vector3 wallLaunchOff = Vector3.zero;

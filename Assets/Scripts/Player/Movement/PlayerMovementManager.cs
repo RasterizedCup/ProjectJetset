@@ -137,6 +137,7 @@ public class PlayerMovementManager : MonoBehaviour
     }
 
 
+    // refactor this to be cleaner CONSIDERABLY
     // reconsider what we have in fixedUpdate and update
     void FixedUpdate()
     {
@@ -156,6 +157,7 @@ public class PlayerMovementManager : MonoBehaviour
         if (RailDetect.isOnSmoothRail)
         {
             smoothRailGrinding.HandleRailSmoothMovement(ref moveContext);
+            // smooth rail dismount cases
             if (SmoothRailGrinding.dismountJumpVelocityTransition)
             {
                 baseMovement.handleSmoothRailJumpcase(ref moveContext);
@@ -179,6 +181,11 @@ public class PlayerMovementManager : MonoBehaviour
         {
             baseMovement.HandleRailJumpLockout(); 
             AttachToRail.lockoutInitialized = false;
+        }
+
+        if (!moveContext.isGrounded && !moveContext.isJumping)
+        {
+            moveContext.isFalling = true;
         }
 
         baseMovement.handleJumping(currRail, ref moveContext);
